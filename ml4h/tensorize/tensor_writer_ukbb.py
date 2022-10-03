@@ -63,7 +63,10 @@ MRI_LIVER_SERIES = ['gre_mullti_echo_10_te_liver', 'lms_ideal_optimised_low_flip
 MRI_LIVER_SERIES_12BIT = ['gre_mullti_echo_10_te_liver_12bit', 'lms_ideal_optimised_low_flip_6dyn_12bit', 'shmolli_192i_12bit', 'shmolli_192i_liver_12bit']
 MRI_LIVER_IDEAL_PROTOCOL = ['lms_ideal_optimised_low_flip_6dyn', 'lms_ideal_optimised_low_flip_6dyn_12bit']
 
-DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218', '20227', '20225', '20217']
+DICOM_MRI_FIELDS = ['20209', '20208', '20210', '20212', '20213', '20204', '20203', '20254', '20216', '20220', '20218',
+                    '20227', '20225', '20217', '20158']
+
+DXA_FIELD = '20158'
 
 ECG_BIKE_FIELD = '6025'
 ECG_REST_FIELD = '20205'
@@ -153,7 +156,7 @@ def write_tensors(
 
         end_time = timer()
         elapsed_time = end_time - start_time
-        logging.info("Populated {} in {} seconds.".format(tp, elapsed_time))
+        logging.info(f"Populated {tp} in {elapsed_time:0.2f} seconds.")
 
     _dicts_and_plots_from_tensorization(a_id, output_folder, min_values_to_print, write_pngs, continuous_stats, stats)
 
@@ -368,8 +371,8 @@ def _write_tensors_from_zipped_dicoms(
     sample_str = str(sample_id)
     for mri_field in set(mri_field_ids).intersection(DICOM_MRI_FIELDS):
         mris = glob.glob(zip_folder + sample_str + '_' + mri_field + '*.zip')
-        for zipped in mris:
-            logging.info("Got zipped dicoms for sample: {} with MRI field: {}".format(sample_id, mri_field))
+        for zipped in sorted(mris):
+            logging.info(f"Got zipped dicoms for sample: {sample_id} with MRI field: {mri_field}")
             dicom_folder = os.path.join(dicoms, sample_str, mri_field)
             if not os.path.exists(dicom_folder):
                 os.makedirs(dicom_folder)
@@ -424,6 +427,14 @@ def _write_tensors_from_dicoms(
         elif series in MRI_LIVER_SERIES + MRI_CARDIAC_SERIES + MRI_BRAIN_SERIES:
             views[series].append(d)
             stats[series] += 1
+        elif series == 'dxa_images':
+            #logging.info("Got DXA series")
+            series_num = dicom.split('.')[-5]
+            dxa_number = dicom.split('.')[-4]
+            name = f'dxa_{series_num}_{dxa_number}'
+            create_tensor_in_hd5(hd5, f'ukb_dxa/', name, d.pixel_array, stats)
+        else:
+            logging.info(f"No special series info: {series}")
         if series in MRI_LIVER_IDEAL_PROTOCOL:
             min_ideal_series = min(min_ideal_series, int(d.SeriesNumber))
 
@@ -444,6 +455,7 @@ def _write_tensors_from_dicoms(
             _tensorize_short_and_long_axis_segmented_cardiac_mri(views[v], v, write_pngs, tensors, hd5, mri_date, mri_group, stats)
         elif v in MRI_BRAIN_SERIES:
             _tensorize_brain_mri(views[v], v, mri_date, mri_group, hd5)
+
         else:
             mri_data = np.zeros((views[v][0].Rows, views[v][0].Columns, len(views[v])), dtype=np.float32)
             for slicer in views[v]:
