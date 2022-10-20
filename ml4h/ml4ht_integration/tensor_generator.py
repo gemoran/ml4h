@@ -8,6 +8,7 @@ from ml4h.TensorMap import TensorMap
 from ml4h.defines import TensorGeneratorABC
 from ml4h.ml4ht_integration.tensor_map import TensorMapSampleGetter
 
+# GM: I got rid of collate function so I could use it with pytorch
 
 class TensorMapDataLoader(TensorGeneratorABC):
     def __init__(
@@ -32,7 +33,8 @@ class TensorMapDataLoader(TensorGeneratorABC):
         )
         self.data_loader = DataLoader(
             self.dset, batch_size=batch_size, num_workers=num_workers,
-            collate_fn=self._collate_fn, drop_last=drop_last,
+            # collate_fn=self._collate_fn,
+            drop_last=drop_last,
         )
         self.iter_loader = iter(self.data_loader)
 
