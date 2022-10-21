@@ -33,7 +33,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
         )
         self.data_loader = DataLoader(
             self.dset, batch_size=batch_size, num_workers=num_workers,
-            # collate_fn=self._collate_fn,
+            collate_fn=self._collate_fn,
             drop_last=drop_last,
         )
         self.iter_loader = iter(self.data_loader)
